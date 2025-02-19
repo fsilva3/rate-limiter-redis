@@ -62,25 +62,22 @@ describe('TokenBucket Test', () => {
     })
 
     it('should block I/O for n milliseconds and retrieve a new token when calling delay method', async () => {
-        const bucket = await TokenBucket.create({ capacity: 1, refillInterval: (3*second) })
+        const bucket = await TokenBucket.create({ capacity: 1, refillInterval: (1*second) })
 
-        const refillSpy = vi.spyOn(bucket, 'refill')
-        bucket.refill()
+        const delaySpy = vi.spyOn(bucket, 'delay')
 
         const tokens = []
         while (tokens.length < 2) {
             // simulate when hasn't tokens available
-            const ohMyToken = await bucket.take()
-            tokens.push(ohMyToken)
+            tokens.push(await bucket.delay())
         }
         
-        const emptyToken = tokens[tokens.length - 1]
-        await bucket.delay(emptyToken)
+        const lastTokenReceived = tokens[tokens.length - 1]
 
         await bucket.clearTokens()
 
-        expect(refillSpy).toHaveBeenCalledTimes(1)
-        expect(emptyToken.value).not.toBeNull()
-        expect(emptyToken.timestamp).not.toEqual(0)
+        expect(delaySpy).toHaveBeenCalledTimes(3)
+        expect(lastTokenReceived.value).not.toBeNull()
+        expect(lastTokenReceived.timestamp).not.toEqual(0)
     })
 })

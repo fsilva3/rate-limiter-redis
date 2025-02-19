@@ -13,8 +13,10 @@ import { sleep } from './utils'
 */
 export default class TokenBucket extends Bucket {
     private static readonly BUCKET_NAME: string = 'rate-limiter-tokens'
+    private readonly maxDelayRetryCount: number = 5
     private capacity: number = 0
     private refillInterval: number = 0
+    private delayRetryCount: number = 0
     private timer: NodeJS.Timeout | null = null
     private startTime: number = 0
     
@@ -23,7 +25,7 @@ export default class TokenBucket extends Bucket {
         this.capacity = settings.capacity
         this.refillInterval = settings.refillInterval
         this.startTime = Date.now()
-        this.timer = setInterval(() => this.refill.bind(this), this.refillInterval)
+        this.timer = setInterval(this.refill.bind(this), this.refillInterval)
     }
 
     private generateToken(): string {
@@ -35,6 +37,12 @@ export default class TokenBucket extends Bucket {
         const nextExecution = this.refillInterval - Math.ceil(elapsedTime % this.refillInterval)
         
         return nextExecution
+    }
+
+    private abortHandler(this: AbortSignal) {
+        if (this.aborted) {
+            throw new Error('Operation aborted')
+        }
     }
 
     /**
@@ -53,8 +61,17 @@ export default class TokenBucket extends Bucket {
         }
     }
 
-    public async take(): Promise<Token> {
+    /**
+     * @description take - It takes the token right away, if there is no tokens available, the token.value will be null
+     * @returns Promise<Token>
+     */
+    public async take(context?: AbortSignal): Promise<Token> {
         try {
+            if (context?.aborted) {
+                throw new Error('Operation aborted')
+            }
+            context?.addEventListener('abort', this.abortHandler)
+
             const response = await this.client.RPOP(TokenBucket.BUCKET_NAME)
             const delay = this.getNextExecutionInMilliseconds()
             if (!response) {
@@ -68,6 +85,9 @@ export default class TokenBucket extends Bucket {
 
             const token: Token = JSON.parse(response)
             token.delay = delay
+            token.remaining = await this.getTotalTokens()
+
+            context?.removeEventListener('abort', this.abortHandler)
             return token
         } catch (error: unknown) {
             throw new TBRedisException(`Error taking token from bucket | ${error}`)
@@ -75,29 +95,33 @@ export default class TokenBucket extends Bucket {
     }
 
     /**
-     * @method delay - Block the operation until receive a new token based on the delay time
-     * @param token 
-     * @returns 
+     * Block the operation until receive a new token based on the delay time
+     * @param {AbortSignal?} context - The context in case wants to abort the request
+     * @return {Promise<Token>} The token object
+     * 
+     * @example 
      */
-    public async delay(token: Token): Promise<void> {
-        if (!token.delay) {
-            return
+    public async delay(context?: AbortSignal): Promise<Token> {
+        if (this.delayRetryCount >= this.maxDelayRetryCount) {
+            throw new TBRedisException('Max delay retries reached out')
         }
 
-        // timeouts on js are not accurate, so we add 10ms to ensure the delay
-        await sleep(token.delay + 10)
+        const token = await this.take(context)
+        if (token.value) {
+            this.delayRetryCount = 0
+            return token
+        }
 
-        const newToken = await this.take()
-        token.value = newToken.value
-        token.timestamp = newToken.timestamp
-        token.delay = newToken.delay
+        const delayInMilliseconds = this.getNextExecutionInMilliseconds()
+        await sleep(delayInMilliseconds + 10, context)
+        this.delayRetryCount += 1
 
-        delete token.message
+        return this.delay(context)
     }
 
     /**
-     * @method refill - Refill the token bucket with new tokens, in case the bucket is not at the full capacity
-     * @returns void
+     * Refill the token-bucket with new tokens, in case the bucket is not at the full capacity
+     * @return {Promise<void>}
      */
     public async refill(): Promise<void> {
         try {
@@ -126,7 +150,8 @@ export default class TokenBucket extends Bucket {
     }
 
     /**
-     * @method close - Close the TokenBucket instance, clear the time and disconnect from Redis
+     * Close the TokenBucket instance, clear the time and disconnect from Redis
+     * @return {Promise<void>}
      */
     public async close(): Promise<void> {
         if (this.timer) {
@@ -139,15 +164,16 @@ export default class TokenBucket extends Bucket {
     }
 
     /**
-     * @method getTotalTokens - Get the total number of tokens in the bucket
-     * @returns {number}
+     * Get the current total of tokens in the bucket
+     * @returns {Promise<number>}
      */
     public async getTotalTokens(): Promise<number> {
         return this.client.LLEN(TokenBucket.BUCKET_NAME)
     }
 
     /**
-     * @method clearTokens - Clear all tokens from the bucket
+     * Remove all tokens from the bucket
+     * @return {Promise<void>}
      */
     public async clearTokens(): Promise<void> {
         await this.client.LTRIM(TokenBucket.BUCKET_NAME, 1, 0)

@@ -26,24 +26,25 @@ Here is an example of how to use Token Bucket Redis:
 
 ```javascript
 const { TokenBucket } = require('rate-limiter-redis');
+const second = 1000
+
+// 60 tokens (requests) per minute
+const tbSettings: TokenBucketSettings = {
+    capacity: 60,
+    refillInterval: (60*second)
+}
 
 // Create a new token bucket
-const bucket = new TokenBucket({
-    capacity: 10, // tokens
-    fillRate: 1000, // in milliseconds
-});
+const bucket = await TokenBucket.create(tbSettings); 
 
-// Check if a token is available
+// Takes the first token created in the bucket, if exists! Other will the token.value will return null
 const token = await bucket.take();
 
 const { 
     value, // value is a hash string if a token is available, null otherwise
-    remaining, // remaining is the number of tokens remaining in the bucket
-    waitTime // waitTime is the time in milliseconds to wait for a token to become available
+    timestamp, // timestamp when the token was created
+    remaning // remaining is the number of tokens
 } = token;
-
-// block the request if no token is available
-sleep(waitTime);
 
 
 ```

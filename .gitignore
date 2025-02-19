@@ -1,1 +1,5 @@
+# node
 /node_modules
+
+# temp docker volume folder
+/data

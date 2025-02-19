@@ -4,8 +4,10 @@ services:
   redis:
     image: redis:latest
     restart: always
-    command: redis-cli --raw ACL SETUSER john on >123pass +@all ~*
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"] # redis-cli --raw ACL SETUSER john on >123pass +@all ~*
     volumes:
+      - ./data/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./data/users.acl:/data/users.acl
       - ./data/redis:/data
     ports:
       - "6379:6379"
