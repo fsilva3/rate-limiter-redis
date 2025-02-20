@@ -8,8 +8,13 @@ export default defineConfig({
     env: {
         REDIS_HOST: 'localhost',
         REDIS_PORT: '6379',
-        REDIS_USER: 'john',
-        REDIS_PASSWORD: '123pass',
-    }
-  }
+        REDIS_USER: 'default',
+        REDIS_PASSWORD: 'mysecretpassword',
+    },
+    coverage: {
+        reporter: ['text', 'html'], // Generate text and HTML reports
+        include: ['src/**/*.ts'], // Include only source files
+        exclude: ['**/*.test.ts'], // Exclude test files
+    },
+  },
 })

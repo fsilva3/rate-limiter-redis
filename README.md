@@ -1,6 +1,8 @@
 # Rate Limiter Redis
 
-Rate Limiter Redis is a JavaScript library that provides different algorithms to rate limit your requests using Redis as shared state between the distributed services. This library is useful for controlling the rate of requests from your application to a third-party service or API.
+Rate Limiter Redis is a JavaScript library that provides different algorithms to rate limit your requests using Redis as shared state between the distributed services.
+
+This library is useful for controlling the rate of requests from your application to a third-party service or API.
 
 ## Reference
 
@@ -9,7 +11,8 @@ Rate Limiter Redis is a JavaScript library that provides different algorithms to
 
 ## Benefits
 
-- **Cost-Effective**: Instead calling HTTP APIs and handle execptions might throw from the Third-party API, you can block the request before it reaches the API, or retry the request later.
+- **Cost-Effective**: Instead calling HTTP APIs and handling execptions might throw from the Third-party API, you can block the request before it reaches the API, or retry the request later.
+
 - **Distributed**: Rate Limiter Redis is designed to work in a distributed environment, where multiple instances of your application can share the same rate limit.
 
 ## Installation
@@ -22,40 +25,78 @@ npm install rate-limiter-redis
 
 ## Usage
 
-Here is an example of how to use Token Bucket Redis:
+Here is a few examples of how to use Rate Limiter Redis:
 
+1. Token Bucket Instance
 ```javascript
 const { TokenBucket } = require('rate-limiter-redis');
+const second = 1000
 
-// Create a new token bucket
-const bucket = new TokenBucket({
-    capacity: 10, // tokens
-    fillRate: 1000, // in milliseconds
-});
+// 60 tokens (requests) per minute
+const tbSettings: TokenBucketSettings = {
+    capacity: 60,
+    refillInterval: (60*second)
+}
 
-// Check if a token is available
+// Create a new token bucket instance
+const bucket = await TokenBucket.create(tbSettings); 
+```
+
+2. Take Method
+```javascript
+// Takes the first token created in the bucket, if exists! Otherwise the token.value will return null
 const token = await bucket.take();
 
 const { 
     value, // value is a hash string if a token is available, null otherwise
-    remaining, // remaining is the number of tokens remaining in the bucket
-    waitTime // waitTime is the time in milliseconds to wait for a token to become available
+    timestamp, // timestamp when the token was created
+    remaning // remaining is the number of tokens
 } = token;
 
-// block the request if no token is available
-sleep(waitTime);
+if (!value) {
+    // re-queue the message
+}
 
+... 
+// Call the Third-party API
+```
 
+3. Delay Method
+```javascript
+// Usually from HTTP frameworks to cancel requests
+const controler = new AbortController()
+
+// In case the bucket is empty, it will block the operation until receive a new token!
+// This method accepts abort signal, which means you can cancel the operation at any time
+const token = await bucket.delay(controler.signal);
+
+const { 
+    value,
+    timestamp,
+    remaning
+} = token;
+
+...
+// Call the Third-party API
 ```
 
 ## Configuration
 
+The `Redis` connection is made by using environment variables; make sure to have these keys available in your `.env` or any other environment setup:
+```bash
+# .env
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_USER=default
+REDIS_PASSWORD=mysecretpassword
+```
+
+<br>
+
 The `TokenBucket` constructor accepts the following options:
 
-- `redis`: Redis connection options.
-- `bucketSize`: The maximum number of tokens in the bucket.
-- `tokensPerInterval`: The number of tokens to add to the bucket per interval.
-- `interval`: The interval at which tokens are added (e.g., 'second', 'minute').
+- `capacity`: The maximum number of tokens in the bucket.
+- `refillInterval`: The milliseconds interval at which tokens are added to the bucket
 
 ## License
 

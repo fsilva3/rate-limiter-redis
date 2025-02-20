@@ -55,11 +55,11 @@ export default class Bucket {
         await this.client.disconnect()
     }
 
-    onConnect() {
+    private onConnect() {
         console.log('Connected to Redis')
     }
 
-    onError(err: Error) {
+    private onError(err: Error) {
         throw new TBRedisException(err.message)
     }
 }
