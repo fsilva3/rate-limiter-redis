@@ -15,52 +15,31 @@ describe('Sleep Function', () => {
     afterEach(() => { })
 
     it('should sleep for two seconds', async () => {
-        const start = Date.now()
-        await sleep(100)
+        const sleepMilliseconds = 100
 
+        const start = Date.now()
+        await sleep(sleepMilliseconds)
         const end = Date.now()
-        const elapsedTime = end - start
-        
-        expect(elapsedTime).toBeGreaterThanOrEqual(1000)
+
+        expect(end - start).toBeGreaterThanOrEqual(sleepMilliseconds)
     })
 
     it('should abort the operation when context is cancelled immediatly', async () => {
         const controler = new AbortController()
         controler.abort()
 
-        let errorMessage: string = ''
-        try {
-            await sleep(2*second, controler.signal)
-        } catch (err: unknown) {
-            if (err instanceof Error) {
-                errorMessage = err.message
-            } else {
-                errorMessage = ''
-            }
-        }
-        
-        expect(errorMessage).toEqual('Operation aborted')
+        const promise = sleep(2*second, controler.signal)
+    
+        await expect(promise).rejects.toThrow('Operation aborted')
     })
 
-    it.skip('should abort the operation when context is cancelled after a while', async () => {
+    it('should abort the operation when context is cancelled after a while', async () => {
         const controler = new AbortController()
-        setTimeout(() => {
-            console.log('Aborting...')
-            controler.abort()
-        }, 100)
+        setTimeout(() => controler.abort(), 100)
 
-        let errorMessage: string = ''
-        try {
-            await sleep(2*second, controler.signal)
-        } catch (err: unknown) {
-            if (err instanceof Error) {
-                errorMessage = err.message
-            } else {
-                errorMessage = ''
-            }
-        }
+        const promise = sleep(2*second, controler.signal)
         
-        expect(errorMessage).toEqual('Operation aborted')
+        await expect(promise).rejects.toThrow('Operation aborted')
     })
 
     

@@ -8,9 +8,8 @@ import {
 } from 'vitest'
 import TokenBucket from '../token-bucket'
 
-const second = 1000
-
 describe('TokenBucket Test', () => {
+    const second = 1000
 
     beforeEach(async () => {})
     afterEach(async () => {})
@@ -54,11 +53,11 @@ describe('TokenBucket Test', () => {
 
         await bucket.clearTokens()
 
-        const emptyToken = tokens[tokens.length-1]
-        expect(emptyToken.value).toBeNull()
-        expect(emptyToken.message).toEqual('No tokens available')
-        expect(emptyToken.timestamp).toEqual(0)
-        expect(emptyToken.delay).toEqual(refillInterval)
+        const emptyToken = tokens.pop()
+        expect(emptyToken?.value).toBeNull()
+        expect(emptyToken?.message).toEqual('No tokens available')
+        expect(emptyToken?.timestamp).toEqual(0)
+        expect(emptyToken?.delay).toEqual(refillInterval)
     })
 
     it('should block I/O for n milliseconds and retrieve a new token when calling delay method', async () => {
@@ -72,12 +71,12 @@ describe('TokenBucket Test', () => {
             tokens.push(await bucket.delay())
         }
         
-        const lastTokenReceived = tokens[tokens.length - 1]
+        const lastTokenReceived = tokens.pop()
 
         await bucket.clearTokens()
 
         expect(delaySpy).toHaveBeenCalledTimes(3)
-        expect(lastTokenReceived.value).not.toBeNull()
-        expect(lastTokenReceived.timestamp).not.toEqual(0)
+        expect(lastTokenReceived?.value).not.toBeNull()
+        expect(lastTokenReceived?.timestamp).not.toEqual(0)
     })
 })

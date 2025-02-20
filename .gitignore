@@ -1,5 +1,7 @@
-# node
+# Node & Typescript
 /node_modules
+/dist
+/coverage
 
 # temp docker volume folder
 /data

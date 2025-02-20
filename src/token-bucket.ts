@@ -4,12 +4,8 @@ import Bucket from './bucket'
 import { sleep } from './utils'
 
 /*
-* TokcenBucket class
-*
 * @class TokenBucket
 * @extends Bucket
-* @constructor
-* @param {TokenBucketSettings} settings - The settings for the token bucket
 */
 export default class TokenBucket extends Bucket {
     private static readonly BUCKET_NAME: string = 'rate-limiter-tokens'
