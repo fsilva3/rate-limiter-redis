@@ -1,10 +1,10 @@
 {
-  "name": "tb-redis",
+  "name": "rate-limiter-redis",
   "version": "0.0.1",
-  "description": "A javascript library to handle Token Bucket algorithm for Redis Server where you can sync the tokens between multiple services instances",
+  "description": "A javascript library to rate limiter requests using different algorithms using Redis as shared state where you can sync the tokens between multiple services instances",
   "main": "index.ts",
   "scripts": {
-    "build": "tsc --watch",
+    "build": "tsc",
     "test": "vitest",
     "coverage": "vitest run --coverage"
   },
