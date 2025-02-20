@@ -5,3 +5,6 @@
 
 # temp docker volume folder
 /data
+
+# MacOS
+.DS_store
