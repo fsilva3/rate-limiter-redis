@@ -4,7 +4,7 @@ services:
   redis:
     image: redis:latest
     restart: always
-    command: ["redis-server", "/usr/local/etc/redis/redis.conf"] # redis-cli --raw ACL SETUSER john on >123pass +@all ~*
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
     volumes:
       - ./data/redis.conf:/usr/local/etc/redis/redis.conf
       - ./data/users.acl:/data/users.acl
