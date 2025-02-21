@@ -1,11 +1,14 @@
 import redis, { RedisClientType } from 'redis'
-import { TBRedisException } from './exception'
+import { RateLimiterException } from './exception'
+import { sleep } from './utils'
 // import { sleep } from './utils'
 
 export default class Bucket {
     private host: string = ''
     private port: number = 6379
     protected client: RedisClientType
+    private maxConnectionRetries: number = 5
+    private retryConnectionCount: number = 0
 
     constructor() {
         const {
@@ -16,15 +19,15 @@ export default class Bucket {
         } = process.env
 
         if (!REDIS_HOST) {
-            throw new TBRedisException('REDIS_HOST environment is required')
+            throw new RateLimiterException('REDIS_HOST environment is required')
         }
 
         if (!REDIS_USER) {
-            throw new TBRedisException('REDIS_USER environment is required')
+            throw new RateLimiterException('REDIS_USER environment is required')
         }
 
         if (!REDIS_PASSWORD) {
-            throw new TBRedisException('REDIS_PASSWORD environment is required')
+            throw new RateLimiterException('REDIS_PASSWORD environment is required')
         }
 
         this.host = REDIS_HOST!
@@ -40,6 +43,16 @@ export default class Bucket {
     }
 
     protected async connect(): Promise<void> {
+        if (this.retryConnectionCount >= this.maxConnectionRetries) {
+            throw new Error('The max Redis connection retry reached out')
+        }
+
+        if (this.client.isOpen) {
+            await sleep(200)
+            this.retryConnectionCount += 1
+            return this.connect()
+        }
+
         if (this.client.isReady) {
             return
         }
@@ -60,6 +73,6 @@ export default class Bucket {
     }
 
     private onError(err: Error) {
-        throw new TBRedisException(err.message)
+        throw new RateLimiterException(err.message)
     }
 }

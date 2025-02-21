@@ -20,7 +20,7 @@ This library is useful for controlling the rate of requests from your applicatio
 To install the library, use npm:
 
 ```bash
-npm install rate-limiter-redis
+npm i -P rate-limiter-redis
 ```
 
 ## Usage

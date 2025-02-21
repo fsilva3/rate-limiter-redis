@@ -7,6 +7,7 @@ import {
     afterEach
 } from 'vitest'
 import TokenBucket from '../token-bucket'
+import { Token } from '../types'
 
 describe('TokenBucket Test', () => {
     const second = 1000
@@ -34,9 +35,9 @@ describe('TokenBucket Test', () => {
 
         await bucket.clearTokens()
 
-        expect(token.value).not.toBeNull()
-        expect(token.timestamp).toEqual(date.getTime())
-        expect(token.delay).toEqual(refillInterval)
+        expect(token?.value).not.toBeNull()
+        expect(token?.timestamp).toEqual(date.getTime())
+        expect(token?.remaining).toEqual(9)
     })
 
     it('shouldn\'t take a token when the bucket has all tokens taken', async () => {
@@ -46,7 +47,7 @@ describe('TokenBucket Test', () => {
         const refillInterval = (10*second)
         const bucket = await TokenBucket.create({ capacity: 1, refillInterval: refillInterval })
 
-        const tokens = []
+        const tokens: unknown[] = []
         while (tokens.length < 2) {
             tokens.push(await bucket.take())
         }
@@ -54,10 +55,7 @@ describe('TokenBucket Test', () => {
         await bucket.clearTokens()
 
         const emptyToken = tokens.pop()
-        expect(emptyToken?.value).toBeNull()
-        expect(emptyToken?.message).toEqual('No tokens available')
-        expect(emptyToken?.timestamp).toEqual(0)
-        expect(emptyToken?.delay).toEqual(refillInterval)
+        expect(emptyToken).toBeNull()
     })
 
     it('should block I/O for n milliseconds and retrieve a new token when calling delay method', async () => {
@@ -65,7 +63,7 @@ describe('TokenBucket Test', () => {
 
         const delaySpy = vi.spyOn(bucket, 'delay')
 
-        const tokens = []
+        const tokens: Token[] = []
         while (tokens.length < 2) {
             // simulate when hasn't tokens available
             tokens.push(await bucket.delay())

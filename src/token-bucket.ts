@@ -1,11 +1,13 @@
-import { TBRedisException } from './exception'
+import { RateLimiterException } from './exception'
 import { Token, TokenBucketSettings } from './types'
 import Bucket from './bucket'
 import { sleep } from './utils'
 
 /*
+* TokenBucket algorithm implemented using Redis as storage
 * @class TokenBucket
 * @extends Bucket
+* @since 0.0.1
 */
 export default class TokenBucket extends Bucket {
     private static readonly BUCKET_NAME: string = 'rate-limiter-tokens'
@@ -42,9 +44,10 @@ export default class TokenBucket extends Bucket {
     }
 
     /**
-     * @function create - Static method to create a new TokenBucket instance to ensure the bucket is refilled
-     * @param settings 
-     * @returns 
+     * Static method to create a new TokenBucket instance to ensure the bucket is refilled
+     * @param {TokenBucketSettings} settings - The constructor settings for the Bucket
+     * @return {Promise<TokenBucket>} TokenBucket instance
+     * @throws {RateLimiterException}
      */
     static async create(settings: TokenBucketSettings): Promise<TokenBucket> {
         try {
@@ -53,15 +56,22 @@ export default class TokenBucket extends Bucket {
             await bucket.refill()
             return bucket
         } catch (error: unknown) {
-            throw new TBRedisException(`Error creating TokenBucket instance | ${error}`)
+            throw new RateLimiterException(`Error creating TokenBucket instance | ${error}`)
         }
     }
 
     /**
-     * @description take - It takes the token right away, if there is no tokens available, the token.value will be null
-     * @returns Promise<Token>
+     * If there is tokens available, it takes the token right away, null otherwise
+     * @return {Promise<Token | null>} returns a token or null token
+     * 
+     * @example
+     *  const controller = new AbortController()
+     *  const token = await bucket.delay(controller.signal)
+     *  if (!token) {
+     *      // re-queue the message
+     *  }
      */
-    public async take(context?: AbortSignal): Promise<Token> {
+    public async take(context?: AbortSignal): Promise<Token | null> {
         try {
             if (context?.aborted) {
                 throw new Error('Operation aborted')
@@ -69,24 +79,17 @@ export default class TokenBucket extends Bucket {
             context?.addEventListener('abort', this.abortHandler)
 
             const response = await this.client.RPOP(TokenBucket.BUCKET_NAME)
-            const delay = this.getNextExecutionInMilliseconds()
             if (!response) {
-                return {
-                    value: null,
-                    timestamp: 0,
-                    message: 'No tokens available',
-                    delay,
-                }
+                return null
             }
 
             const token: Token = JSON.parse(response)
-            token.delay = delay
             token.remaining = await this.getTotalTokens()
 
             context?.removeEventListener('abort', this.abortHandler)
             return token
         } catch (error: unknown) {
-            throw new TBRedisException(`Error taking token from bucket | ${error}`)
+            throw new RateLimiterException(`Error taking token from bucket | ${error}`)
         }
     }
 
@@ -95,15 +98,19 @@ export default class TokenBucket extends Bucket {
      * @param {AbortSignal?} context - The context in case wants to abort the request
      * @return {Promise<Token>} The token object
      * 
-     * @example 
+     * @example
+     *  const controller = new AbortController()
+     *  const myFreshToken = await bucket.delay(controller.signal)
+     *  ...
+     *  // call the API
      */
     public async delay(context?: AbortSignal): Promise<Token> {
         if (this.delayRetryCount >= this.maxDelayRetryCount) {
-            throw new TBRedisException('Max delay retries reached out')
+            throw new RateLimiterException('Max delay retries reached out')
         }
 
         const token = await this.take(context)
-        if (token.value) {
+        if (token?.value) {
             this.delayRetryCount = 0
             return token
         }
@@ -118,11 +125,12 @@ export default class TokenBucket extends Bucket {
     /**
      * Refill the token-bucket with new tokens, in case the bucket is not at the full capacity
      * @return {Promise<void>}
+     * @throws {RateLimiterException}
      */
     public async refill(): Promise<void> {
         try {
             if (!this.client.isReady) {
-                throw new TBRedisException('Redis client is not ready')
+                throw new RateLimiterException('Redis client is not ready')
             }
 
             const countTokens = await this.client.LLEN(TokenBucket.BUCKET_NAME)
@@ -141,7 +149,7 @@ export default class TokenBucket extends Bucket {
 
             await this.client.LPUSH(TokenBucket.BUCKET_NAME, tokens)
         } catch (error: unknown) {
-            throw new TBRedisException(`Error filling token bucket | ${error}`)
+            throw new RateLimiterException(`Error filling token bucket | ${error}`)
         }
     }
 
@@ -161,7 +169,7 @@ export default class TokenBucket extends Bucket {
 
     /**
      * Get the current total of tokens in the bucket
-     * @returns {Promise<number>}
+     * @return {Promise<number>}
      */
     public async getTotalTokens(): Promise<number> {
         return this.client.LLEN(TokenBucket.BUCKET_NAME)

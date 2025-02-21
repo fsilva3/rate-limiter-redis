@@ -1,18 +1,22 @@
 {
-  "name": "rate-limiter-redis",
+  "name": "@fsilva3/rate-limiter-redis",
   "version": "0.0.1",
   "description": "A javascript library to rate limiter requests using different algorithms using Redis as shared state where you can sync the tokens between multiple services instances",
   "main": "index.ts",
   "scripts": {
     "build": "tsc",
     "test": "vitest",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "prepare": "npm run build"
   },
   "author": "Filipe Silva",
   "license": "MIT",
   "dependencies": {
     "redis": "^4.7.0"
   },
+  "files": [
+    "dist"
+  ],
   "devDependencies": {
     "@eslint/js": "^9.20.0",
     "@types/node": "^22.13.4",
@@ -21,5 +25,19 @@
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.24.0",
     "vitest": "^3.0.5"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fsilva3/rate-limiter-redis.git"
+  },
+  "keywords": [
+    "token-bucket",
+    "rate",
+    "limiter",
+    "redis"
+  ],
+  "bugs": {
+    "url": "https://github.com/fsilva3/rate-limiter-redis/issues"
+  },
+  "homepage": "https://github.com/fsilva3/rate-limiter-redis#readme"
 }

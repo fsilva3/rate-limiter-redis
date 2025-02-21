@@ -4,9 +4,7 @@ export type TokenBucketSettings = {
 }
 
 export type Token = {
-    value: string?;
+    value: string;
     timestamp: number;
-    message?: string;
     remaining?: number;
-    delay?: number;
 }
