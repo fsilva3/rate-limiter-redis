@@ -16,7 +16,7 @@ describe('TokenBucket Test', () => {
     afterEach(async () => {})
 
     it('should create an instance of TokenBucket class and filling the tokens on Redis', async () => {
-        const bucket = await TokenBucket.create({ capacity: 10, refillInterval: (10*second) })
+        const bucket = await TokenBucket.create({ capacity: 10, interval: (10*second) })
 
         const count = await bucket.getTotalTokens()
         await bucket.clearTokens()
@@ -30,7 +30,7 @@ describe('TokenBucket Test', () => {
         vi.setSystemTime(date)
 
         const refillInterval = (10*second)
-        const bucket = await TokenBucket.create({ capacity: 10, refillInterval: refillInterval })
+        const bucket = await TokenBucket.create({ capacity: 10, interval: refillInterval })
         const token = await bucket.take()
 
         await bucket.clearTokens()
@@ -45,7 +45,7 @@ describe('TokenBucket Test', () => {
         vi.setSystemTime(date)
 
         const refillInterval = (10*second)
-        const bucket = await TokenBucket.create({ capacity: 1, refillInterval: refillInterval })
+        const bucket = await TokenBucket.create({ capacity: 1, interval: refillInterval })
 
         const tokens: unknown[] = []
         while (tokens.length < 2) {
@@ -59,7 +59,7 @@ describe('TokenBucket Test', () => {
     })
 
     it('should block I/O for n milliseconds and retrieve a new token when calling delay method', async () => {
-        const bucket = await TokenBucket.create({ capacity: 1, refillInterval: (1*second) })
+        const bucket = await TokenBucket.create({ capacity: 1, interval: (1*second) })
 
         const delaySpy = vi.spyOn(bucket, 'delay')
 

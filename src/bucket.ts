@@ -1,7 +1,6 @@
 import redis, { RedisClientType } from 'redis'
 import { RateLimiterException } from './exception'
 import { sleep } from './utils'
-// import { sleep } from './utils'
 
 export default class Bucket {
     private host: string = ''

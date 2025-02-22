@@ -1,6 +1,6 @@
 export type TokenBucketSettings = {
     capacity: number;
-    refillInterval: number;
+    interval: number;
 }
 
 export type Token = {

@@ -13,7 +13,7 @@ export default class TokenBucket extends Bucket {
     private static readonly BUCKET_NAME: string = 'rate-limiter-tokens'
     private readonly maxDelayRetryCount: number = 5
     private capacity: number = 0
-    private refillInterval: number = 0
+    private interval: number = 0
     private delayRetryCount: number = 0
     private timer: NodeJS.Timeout | null = null
     private startTime: number = 0
@@ -21,9 +21,9 @@ export default class TokenBucket extends Bucket {
     constructor(settings: TokenBucketSettings) {
         super()
         this.capacity = settings.capacity
-        this.refillInterval = settings.refillInterval
+        this.interval = settings.interval
         this.startTime = Date.now()
-        this.timer = setInterval(this.refill.bind(this), this.refillInterval)
+        this.timer = setInterval(this.refill.bind(this), this.interval)
     }
 
     private generateToken(): string {
@@ -32,7 +32,7 @@ export default class TokenBucket extends Bucket {
 
     private getNextExecutionInMilliseconds() {
         const elapsedTime = Date.now() - this.startTime
-        const nextExecution = this.refillInterval - Math.ceil(elapsedTime % this.refillInterval)
+        const nextExecution = this.interval - Math.ceil(elapsedTime % this.interval)
         
         return nextExecution
     }
