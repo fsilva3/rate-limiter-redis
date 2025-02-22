@@ -1,12 +1,10 @@
 export type TokenBucketSettings = {
     capacity: number;
-    refillInterval: number;
+    interval: number;
 }
 
 export type Token = {
-    value: string?;
+    value: string;
     timestamp: number;
-    message?: string;
     remaining?: number;
-    delay?: number;
 }

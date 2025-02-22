@@ -20,7 +20,7 @@ This library is useful for controlling the rate of requests from your applicatio
 To install the library, use npm:
 
 ```bash
-npm install rate-limiter-redis
+npm i --save rate-limiter-redis
 ```
 
 ## Usage
@@ -29,13 +29,13 @@ Here is a few examples of how to use Rate Limiter Redis:
 
 1. Token Bucket Instance
 ```javascript
-const { TokenBucket } = require('rate-limiter-redis');
+import { TokenBucket, TokenBucketSettings } from ('@fsilva3/rate-limiter-redis')
 const second = 1000
 
 // 60 tokens (requests) per minute
 const tbSettings: TokenBucketSettings = {
     capacity: 60,
-    refillInterval: (60*second)
+    interval: (60*second)
 }
 
 // Create a new token bucket instance
@@ -54,7 +54,7 @@ const {
 } = token;
 
 if (!value) {
-    // re-queue the message
+    // re-queue the message, throw exception or return error
 }
 
 ... 
@@ -96,7 +96,7 @@ REDIS_PASSWORD=mysecretpassword
 The `TokenBucket` constructor accepts the following options:
 
 - `capacity`: The maximum number of tokens in the bucket.
-- `refillInterval`: The milliseconds interval at which tokens are added to the bucket
+- `interval`: The milliseconds interval at which tokens are added to the bucket
 
 ## License
 

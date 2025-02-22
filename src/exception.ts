@@ -1,10 +1,7 @@
-// create a new execption type
-class TBRedisException extends Error {
+export class RateLimiterException extends Error {
     constructor(msg: string) {
         super(msg)
 
-        Object.setPrototypeOf(this, TBRedisException.prototype)
+        Object.setPrototypeOf(this, RateLimiterException.prototype)
     }
 }
-
-export { TBRedisException }

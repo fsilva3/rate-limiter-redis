@@ -7,6 +7,7 @@ import {
     afterEach
 } from 'vitest'
 import TokenBucket from '../token-bucket'
+import { Token } from '../types'
 
 describe('TokenBucket Test', () => {
     const second = 1000
@@ -15,7 +16,7 @@ describe('TokenBucket Test', () => {
     afterEach(async () => {})
 
     it('should create an instance of TokenBucket class and filling the tokens on Redis', async () => {
-        const bucket = await TokenBucket.create({ capacity: 10, refillInterval: (10*second) })
+        const bucket = await TokenBucket.create({ capacity: 10, interval: (10*second) })
 
         const count = await bucket.getTotalTokens()
         await bucket.clearTokens()
@@ -29,14 +30,14 @@ describe('TokenBucket Test', () => {
         vi.setSystemTime(date)
 
         const refillInterval = (10*second)
-        const bucket = await TokenBucket.create({ capacity: 10, refillInterval: refillInterval })
+        const bucket = await TokenBucket.create({ capacity: 10, interval: refillInterval })
         const token = await bucket.take()
 
         await bucket.clearTokens()
 
-        expect(token.value).not.toBeNull()
-        expect(token.timestamp).toEqual(date.getTime())
-        expect(token.delay).toEqual(refillInterval)
+        expect(token?.value).not.toBeNull()
+        expect(token?.timestamp).toEqual(date.getTime())
+        expect(token?.remaining).toEqual(9)
     })
 
     it('shouldn\'t take a token when the bucket has all tokens taken', async () => {
@@ -44,9 +45,9 @@ describe('TokenBucket Test', () => {
         vi.setSystemTime(date)
 
         const refillInterval = (10*second)
-        const bucket = await TokenBucket.create({ capacity: 1, refillInterval: refillInterval })
+        const bucket = await TokenBucket.create({ capacity: 1, interval: refillInterval })
 
-        const tokens = []
+        const tokens: unknown[] = []
         while (tokens.length < 2) {
             tokens.push(await bucket.take())
         }
@@ -54,18 +55,15 @@ describe('TokenBucket Test', () => {
         await bucket.clearTokens()
 
         const emptyToken = tokens.pop()
-        expect(emptyToken?.value).toBeNull()
-        expect(emptyToken?.message).toEqual('No tokens available')
-        expect(emptyToken?.timestamp).toEqual(0)
-        expect(emptyToken?.delay).toEqual(refillInterval)
+        expect(emptyToken).toBeNull()
     })
 
     it('should block I/O for n milliseconds and retrieve a new token when calling delay method', async () => {
-        const bucket = await TokenBucket.create({ capacity: 1, refillInterval: (1*second) })
+        const bucket = await TokenBucket.create({ capacity: 1, interval: (1*second) })
 
         const delaySpy = vi.spyOn(bucket, 'delay')
 
-        const tokens = []
+        const tokens: Token[] = []
         while (tokens.length < 2) {
             // simulate when hasn't tokens available
             tokens.push(await bucket.delay())
