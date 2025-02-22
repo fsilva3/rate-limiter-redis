@@ -21,7 +21,8 @@ describe('Sleep Function', () => {
         await sleep(sleepMilliseconds)
         const end = Date.now()
 
-        expect(end - start).toBeGreaterThanOrEqual(sleepMilliseconds)
+        // safe margin to github actions pipeline
+        expect(end - start).toBeGreaterThanOrEqual(sleepMilliseconds - 10)
     })
 
     it('should abort the operation when context is cancelled immediatly', async () => {

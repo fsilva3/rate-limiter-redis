@@ -29,8 +29,8 @@ describe('TokenBucket Test', () => {
         const date = new Date(2025, 1, 18, 13)
         vi.setSystemTime(date)
 
-        const refillInterval = (10*second)
-        const bucket = await TokenBucket.create({ capacity: 10, interval: refillInterval })
+        const interval = (10*second)
+        const bucket = await TokenBucket.create({ capacity: 10, interval })
         const token = await bucket.take()
 
         await bucket.clearTokens()
@@ -44,8 +44,8 @@ describe('TokenBucket Test', () => {
         const date = new Date(2025, 1, 18, 13)
         vi.setSystemTime(date)
 
-        const refillInterval = (10*second)
-        const bucket = await TokenBucket.create({ capacity: 1, interval: refillInterval })
+        const interval = (10*second)
+        const bucket = await TokenBucket.create({ capacity: 1, interval })
 
         const tokens: unknown[] = []
         while (tokens.length < 2) {
