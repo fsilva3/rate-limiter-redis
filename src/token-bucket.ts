@@ -10,8 +10,8 @@ import { sleep } from './utils'
 * @since 0.0.1
 */
 export default class TokenBucket extends Bucket {
-    private static readonly BUCKET_NAME: string = 'rate-limiter-tokens'
     private readonly maxDelayRetryCount: number = 5
+    private bucketName: string = 'rate-limiter-tokens'
     private capacity: number = 0
     private interval: number = 0
     private delayRetryCount: number = 0
@@ -22,6 +22,10 @@ export default class TokenBucket extends Bucket {
         super()
         this.capacity = settings.capacity
         this.interval = settings.interval
+        if (settings.key) {
+            this.bucketName = settings.key
+        }
+
         this.startTime = Date.now()
         this.timer = setInterval(this.refill.bind(this), this.interval)
     }
@@ -78,7 +82,7 @@ export default class TokenBucket extends Bucket {
             }
             context?.addEventListener('abort', this.abortHandler)
 
-            const response = await this.client.RPOP(TokenBucket.BUCKET_NAME)
+            const response = await this.client.RPOP(this.bucketName)
             if (!response) {
                 return null
             }
@@ -133,7 +137,7 @@ export default class TokenBucket extends Bucket {
                 throw new RateLimiterException('Redis client is not ready')
             }
 
-            const countTokens = await this.client.LLEN(TokenBucket.BUCKET_NAME)
+            const countTokens = await this.client.LLEN(this.bucketName)
             if (countTokens >= this.capacity) {
                 return
             }
@@ -147,7 +151,7 @@ export default class TokenBucket extends Bucket {
                 })
             })
 
-            await this.client.LPUSH(TokenBucket.BUCKET_NAME, tokens)
+            await this.client.LPUSH(this.bucketName, tokens)
         } catch (error: unknown) {
             throw new RateLimiterException(`Error filling token bucket | ${error}`)
         }
@@ -172,7 +176,7 @@ export default class TokenBucket extends Bucket {
      * @return {Promise<number>}
      */
     public async getTotalTokens(): Promise<number> {
-        return this.client.LLEN(TokenBucket.BUCKET_NAME)
+        return this.client.LLEN(this.bucketName)
     }
 
     /**
@@ -180,6 +184,6 @@ export default class TokenBucket extends Bucket {
      * @return {Promise<void>}
      */
     public async clearTokens(): Promise<void> {
-        await this.client.LTRIM(TokenBucket.BUCKET_NAME, 1, 0)
+        await this.client.LTRIM(this.bucketName, 1, 0)
     }
 }

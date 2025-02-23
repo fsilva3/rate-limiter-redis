@@ -44,16 +44,9 @@ const bucket = await TokenBucket.create(tbSettings);
 
 2. Take Method
 ```javascript
-// Takes the first token created in the bucket, if exists! Otherwise the token.value will return null
+// Takes the first token created in the bucket, if exists! Otherwise the token will be null
 const token = await bucket.take();
-
-const { 
-    value, // value is a hash string if a token is available, null otherwise
-    timestamp, // timestamp when the token was created
-    remaning // remaining is the number of tokens
-} = token;
-
-if (!value) {
+if (!token) {
     // re-queue the message, throw exception or return error
 }
 
@@ -71,9 +64,9 @@ const controler = new AbortController()
 const token = await bucket.delay(controler.signal);
 
 const { 
-    value,
-    timestamp,
-    remaning
+    value, // value is a hash string if a token is available, null otherwise
+    timestamp, // timestamp when the token was created
+    remaning // remaining is the number of tokens
 } = token;
 
 ...
@@ -89,6 +82,7 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_USER=default
 REDIS_PASSWORD=mysecretpassword
+REDIS_DATABASE=0
 ```
 
 <br>
