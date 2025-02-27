@@ -10,8 +10,8 @@ import { sleep } from './utils'
 * @since 0.0.1
 */
 export default class TokenBucket extends Bucket {
-    private static readonly BUCKET_NAME: string = 'rate-limiter-tokens'
     private readonly maxDelayRetryCount: number = 5
+    private bucketName: string = 'rate-limiter-tokens'
     private capacity: number = 0
     private interval: number = 0
     private delayRetryCount: number = 0
@@ -22,6 +22,10 @@ export default class TokenBucket extends Bucket {
         super()
         this.capacity = settings.capacity
         this.interval = settings.interval
+        if (settings.key) {
+            this.bucketName = settings.key
+        }
+
         this.startTime = Date.now()
         this.timer = setInterval(this.refill.bind(this), this.interval)
     }
@@ -35,12 +39,6 @@ export default class TokenBucket extends Bucket {
         const nextExecution = this.interval - Math.ceil(elapsedTime % this.interval)
         
         return nextExecution
-    }
-
-    private abortHandler(this: AbortSignal) {
-        if (this.aborted) {
-            throw new Error('Operation aborted')
-        }
     }
 
     /**
@@ -76,19 +74,34 @@ export default class TokenBucket extends Bucket {
             if (context?.aborted) {
                 throw new Error('Operation aborted')
             }
-            context?.addEventListener('abort', this.abortHandler)
 
-            const response = await this.client.RPOP(TokenBucket.BUCKET_NAME)
-            if (!response) {
+            const timeoutAbortSignal = new Promise((_, reject) => {
+                if (context) {
+                    context.addEventListener('abort', () => reject(new Error('Operation aborted')))
+                }
+            })
+
+            const promises = Promise.all([
+                this.client.RPOP(this.bucketName),
+                this.getTotalTokens()
+            ])
+
+            const responses = await Promise.race([promises, timeoutAbortSignal])
+            const responsesArray = responses as unknown as [string | null, number]
+            const tokenResponse = responsesArray[0] as string | null
+            if (!tokenResponse) {
                 return null
             }
 
-            const token: Token = JSON.parse(response)
-            token.remaining = await this.getTotalTokens()
+            const token: Token = JSON.parse(tokenResponse)
+            token.remaining = responsesArray[1] as number
 
-            context?.removeEventListener('abort', this.abortHandler)
             return token
         } catch (error: unknown) {
+            if (error instanceof Error && error.message === 'Operation aborted') {
+                throw error
+            }
+
             throw new RateLimiterException(`Error taking token from bucket | ${error}`)
         }
     }
@@ -133,7 +146,7 @@ export default class TokenBucket extends Bucket {
                 throw new RateLimiterException('Redis client is not ready')
             }
 
-            const countTokens = await this.client.LLEN(TokenBucket.BUCKET_NAME)
+            const countTokens = await this.client.LLEN(this.bucketName)
             if (countTokens >= this.capacity) {
                 return
             }
@@ -147,7 +160,7 @@ export default class TokenBucket extends Bucket {
                 })
             })
 
-            await this.client.LPUSH(TokenBucket.BUCKET_NAME, tokens)
+            await this.client.LPUSH(this.bucketName, tokens)
         } catch (error: unknown) {
             throw new RateLimiterException(`Error filling token bucket | ${error}`)
         }
@@ -167,12 +180,16 @@ export default class TokenBucket extends Bucket {
         console.log('Closed Token Bucket instance!')
     }
 
+    public isReady(): boolean {
+        return this.client.isReady
+    }
+
     /**
      * Get the current total of tokens in the bucket
      * @return {Promise<number>}
      */
     public async getTotalTokens(): Promise<number> {
-        return this.client.LLEN(TokenBucket.BUCKET_NAME)
+        return this.client.LLEN(this.bucketName)
     }
 
     /**
@@ -180,6 +197,6 @@ export default class TokenBucket extends Bucket {
      * @return {Promise<void>}
      */
     public async clearTokens(): Promise<void> {
-        await this.client.LTRIM(TokenBucket.BUCKET_NAME, 1, 0)
+        await this.client.LTRIM(this.bucketName, 1, 0)
     }
 }

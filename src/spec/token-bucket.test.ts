@@ -8,12 +8,17 @@ import {
 } from 'vitest'
 import TokenBucket from '../token-bucket'
 import { Token } from '../types'
+import { sleep } from '../utils'
 
 describe('TokenBucket Test', () => {
     const second = 1000
+    const tokenPattern = /^[a-z0-9]{9,12}$/
 
     beforeEach(async () => {})
-    afterEach(async () => {})
+
+    afterEach(async () => {
+        vi.restoreAllMocks()
+    })
 
     it('should create an instance of TokenBucket class and filling the tokens on Redis', async () => {
         const bucket = await TokenBucket.create({ capacity: 10, interval: (10*second) })
@@ -35,7 +40,7 @@ describe('TokenBucket Test', () => {
 
         await bucket.clearTokens()
 
-        expect(token?.value).not.toBeNull()
+        expect(token?.value).toMatch(tokenPattern)
         expect(token?.timestamp).toEqual(date.getTime())
         expect(token?.remaining).toEqual(9)
     })
@@ -74,7 +79,56 @@ describe('TokenBucket Test', () => {
         await bucket.clearTokens()
 
         expect(delaySpy).toHaveBeenCalledTimes(3)
-        expect(lastTokenReceived?.value).not.toBeNull()
+        expect(lastTokenReceived?.value).toMatch(tokenPattern)
         expect(lastTokenReceived?.timestamp).not.toEqual(0)
+    })
+
+    it('should use a different table name when using settings key', async () => {
+        const bucket = await TokenBucket.create({
+            capacity: 1,
+            interval: (1*second),
+            key: 'different-table-name'
+        })
+
+        const token: Token = await bucket.delay()
+
+        await bucket.clearTokens()
+
+        expect(token?.value).toMatch(tokenPattern)
+    })
+
+    it('should abort the operation when it receives an abort signal immediately', async () => {
+        const bucket = await TokenBucket.create({ capacity: 1, interval: (1*second) })
+
+        const controler = new AbortController()
+        controler.abort()
+
+        const promise = bucket.delay(controler.signal)
+
+        await expect(promise).rejects.toThrow('Operation aborted')
+    })
+
+    it('should abort the operation when it receives an abort signal after a few milliseconds', async () => {
+        const bucket = await TokenBucket.create({ capacity: 1, interval: (1*second) })
+
+        bucket.getTotalTokens = vi.fn(async () => {
+            await sleep(300)
+            return 5
+        })
+
+        const controler = new AbortController()
+        setTimeout(() => controler.abort(), 50)
+
+        const promise = bucket.take(controler.signal)
+        
+        await expect(promise).rejects.toThrow('Operation aborted')
+    })
+
+    it('should close, disconnect and clear the timer when calling close method', async () => {
+        const bucket = await TokenBucket.create({ capacity: 1, interval: (1*second) })
+
+        await bucket.close()
+
+        expect(bucket.isReady()).toBeFalsy()
     })
 })
