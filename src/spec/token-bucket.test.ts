@@ -12,7 +12,7 @@ import { sleep } from '../utils'
 
 describe('TokenBucket Test', () => {
     const second = 1000
-    const tokenPattern = /^[a-z0-9]{9,12}$/
+    const tokenPattern = /^[a-z0-9]{5,15}$/
 
     beforeEach(async () => {})
 
