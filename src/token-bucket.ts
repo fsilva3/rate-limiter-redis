@@ -41,12 +41,6 @@ export default class TokenBucket extends Bucket {
         return nextExecution
     }
 
-    private abortHandler(this: AbortSignal) {
-        if (this.aborted) {
-            throw new Error('Operation aborted')
-        }
-    }
-
     /**
      * Static method to create a new TokenBucket instance to ensure the bucket is refilled
      * @param {TokenBucketSettings} settings - The constructor settings for the Bucket
@@ -80,19 +74,34 @@ export default class TokenBucket extends Bucket {
             if (context?.aborted) {
                 throw new Error('Operation aborted')
             }
-            context?.addEventListener('abort', this.abortHandler)
 
-            const response = await this.client.RPOP(this.bucketName)
-            if (!response) {
+            const timeoutAbortSignal = new Promise((_, reject) => {
+                if (context) {
+                    context.addEventListener('abort', () => reject(new Error('Operation aborted')))
+                }
+            })
+
+            const promises = Promise.all([
+                this.client.RPOP(this.bucketName),
+                this.getTotalTokens()
+            ])
+
+            const responses = await Promise.race([promises, timeoutAbortSignal])
+            const responsesArray = responses as unknown as [string | null, number]
+            const tokenResponse = responsesArray[0] as string | null
+            if (!tokenResponse) {
                 return null
             }
 
-            const token: Token = JSON.parse(response)
-            token.remaining = await this.getTotalTokens()
+            const token: Token = JSON.parse(tokenResponse)
+            token.remaining = responsesArray[1] as number
 
-            context?.removeEventListener('abort', this.abortHandler)
             return token
         } catch (error: unknown) {
+            if (error instanceof Error && error.message === 'Operation aborted') {
+                throw error
+            }
+
             throw new RateLimiterException(`Error taking token from bucket | ${error}`)
         }
     }
@@ -169,6 +178,10 @@ export default class TokenBucket extends Bucket {
 
         await this.quit()
         console.log('Closed Token Bucket instance!')
+    }
+
+    public isReady(): boolean {
+        return this.client.isReady
     }
 
     /**
