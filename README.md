@@ -40,7 +40,7 @@ const tbSettings: TokenBucketSettings = {
 }
 
 // Create a new token bucket instance
-const bucket = await TokenBucket.create(tbSettings); 
+const bucket = await TokenBucket.create(tbSettings);
 ```
 
 2. Take Method
