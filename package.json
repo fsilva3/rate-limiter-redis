@@ -1,6 +1,6 @@
 {
   "name": "@fsilva3/rate-limiter-redis",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "license": "MIT",
   "description": "A javascript library to rate limiter requests using different algorithms using Redis as shared state where you can sync the tokens between multiple services instances",
   "main": "./dist/index.js",
