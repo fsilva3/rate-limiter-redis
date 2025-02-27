@@ -35,7 +35,8 @@ const second = 1000
 // 60 tokens (requests) per minute
 const tbSettings: TokenBucketSettings = {
     capacity: 60,
-    interval: (60*second)
+    interval: (60*second),
+    key: 'my-rate-limiter-bucket' // optional key param to identify the bucket, otherwise it will use the default key
 }
 
 // Create a new token bucket instance
